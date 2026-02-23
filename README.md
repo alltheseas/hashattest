@@ -101,6 +101,12 @@ Planned support:
 - **[Sigstore](https://sigstore.dev)** — Transparency logs for software signing. Complementary — sigstore proves who signed, hashattest proves what was built.
 - **[SLSA](https://slsa.dev)** — Supply chain security framework. hashattest can help projects achieve SLSA levels by providing verifiable build provenance.
 
+## Why Not Just Reproducible Builds?
+
+Reproducible builds verify **source → binary**. hashattest verifies **dependency downloads are untampered**. They're complementary.
+
+If a builder's DNS is hijacked and they download a poisoned `ring` or `libcrux`, their build is still "reproducible" — same poisoned input, same poisoned output, every time. Reproducible builds only catch this if multiple builders in different regions compare results. That's what hashattest does, but at the dependency level — catching the problem *before* it enters the build. Cheaper, easier, and doesn't require the entire ecosystem to achieve build determinism (which <10% of F-Droid apps have managed).
+
 ## Geographic Diversity
 
 Detection depends on having builders in different DNS regions. Each attestation event includes a geohash tag (`g`) per [NIP-52](https://github.com/nostr-protocol/nips/blob/master/52.md), so consumers can verify geographic diversity of their attestation sources.
