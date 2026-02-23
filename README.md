@@ -4,7 +4,7 @@ Nostr-based attestation tool for software dependency integrity. Guards against D
 
 ## The Problem
 
-A state actor can hijack DNS for a dependency's binary host domain. Developers compiling from that region silently receive a tampered library baked into their app. Even if the final app is hash-verified at distribution time, the compromised dependency is already inside.
+A malicious actor can hijack DNS for a dependency's binary host domain. Developers compiling from that region silently receive a tampered library baked into their app. Even if the final app is hash-verified at distribution time, the compromised dependency is already inside.
 
 Today's defenses are fragmented:
 - Lockfile hash pinning (npm, Cargo, pub) only covers packages managed by that tool
