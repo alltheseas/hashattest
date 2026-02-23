@@ -1,4 +1,4 @@
-# hashattest
+# libwatch
 
 Nostr-based attestation tool for software dependency integrity. Guards against DNS-based supply chain attacks on libraries.
 
@@ -27,10 +27,10 @@ Nostr gives us:
 
 ## How It Works
 
-A builder runs hashattest against a project's dependency lockfile:
+A builder runs libwatch against a project's dependency lockfile:
 
 ```
-hashattest attest pubspec.lock
+libwatch attest pubspec.lock
 ```
 
 For each dependency, it:
@@ -59,7 +59,7 @@ For each dependency, it:
 Consumers query for attestations:
 
 ```
-hashattest check pubspec.lock
+libwatch check pubspec.lock
 ```
 
 This fetches attestation events from relays, filtered by builders in your web-of-trust, and reports:
@@ -67,20 +67,20 @@ This fetches attestation events from relays, filtered by builders in your web-of
 - Which dependencies have conflicting hashes across builders (potential DNS attack)
 - Which dependencies have no attestations yet
 
-**The lockfile bootstrap problem:** If your lockfile was generated on a compromised network, the poisoned hash is already pinned — and builders will attest "match" against it. hashattest addresses this by cross-checking against a second trust anchor: prior attestations from trusted builders for the same package version. If your lockfile hash disagrees with what builders in clean regions previously attested, that's a flag. First-seen hashes with no prior attestations are marked as unverified.
+**The lockfile bootstrap problem:** If your lockfile was generated on a compromised network, the poisoned hash is already pinned — and builders will attest "match" against it. libwatch addresses this by cross-checking against a second trust anchor: prior attestations from trusted builders for the same package version. If your lockfile hash disagrees with what builders in clean regions previously attested, that's a flag. First-seen hashes with no prior attestations are marked as unverified.
 
 ## Nostr Events
 
-hashattest builds on the nostr event model defined in [NIP-82 (Software Applications)](https://github.com/nostr-protocol/nips/pull/1336):
+libwatch builds on the nostr event model defined in [NIP-82 (Software Applications)](https://github.com/nostr-protocol/nips/pull/1336):
 
-| Kind | NIP-82 Purpose | hashattest Purpose |
+| Kind | NIP-82 Purpose | libwatch Purpose |
 |------|---------------|-------------------|
 | **32267** | Software Application | The app whose dependencies are being attested |
 | **30063** | Software Release | A specific release version with its dependency tree |
 | **3063** | Software Asset (`x` = SHA-256 hash) | Individual dependency artifacts |
 | **30301** | *(Attestation, per WalletScrutiny)* | Builder's attestation that a dependency hash is correct |
 
-NIP-82's kind 3063 (Software Asset) already carries the `x` tag (SHA-256 hash) that hashattest verifies against. The attestation event (kind 30301) references the asset hash and adds a builder's independent verification.
+NIP-82's kind 3063 (Software Asset) already carries the `x` tag (SHA-256 hash) that libwatch verifies against. The attestation event (kind 30301) references the asset hash and adds a builder's independent verification.
 
 ## Supported Package Managers
 
@@ -95,17 +95,17 @@ Planned support:
 
 ## Relationship to Existing Work
 
-- **[NIP-82](https://github.com/nostr-protocol/nips/pull/1336)** — Nostr event kinds for software applications, releases, and assets. hashattest uses these as the foundation for dependency identity and hash verification.
-- **[Zapstore](https://github.com/zapstore/zapstore)** — Nostr-based app store that verifies app hashes at install time. hashattest extends this concept from apps to libraries.
-- **[WalletScrutiny](https://walletscrutiny.com)** — Reproducible build attestations for Bitcoin wallets using nostr events (kind 30301). hashattest builds on their [attestation format](https://gitlab.com/walletscrutiny/walletScrutinyCom/-/blob/master/docs/verifications.md).
-- **[Sigstore](https://sigstore.dev)** — Transparency logs for software signing. Complementary — sigstore proves who signed, hashattest proves what was built.
-- **[SLSA](https://slsa.dev)** — Supply chain security framework. hashattest can help projects achieve SLSA levels by providing verifiable build provenance.
+- **[NIP-82](https://github.com/nostr-protocol/nips/pull/1336)** — Nostr event kinds for software applications, releases, and assets. libwatch uses these as the foundation for dependency identity and hash verification.
+- **[Zapstore](https://github.com/zapstore/zapstore)** — Nostr-based app store that verifies app hashes at install time. libwatch extends this concept from apps to libraries.
+- **[WalletScrutiny](https://walletscrutiny.com)** — Reproducible build attestations for Bitcoin wallets using nostr events (kind 30301). libwatch builds on their [attestation format](https://gitlab.com/walletscrutiny/walletScrutinyCom/-/blob/master/docs/verifications.md).
+- **[Sigstore](https://sigstore.dev)** — Transparency logs for software signing. Complementary — sigstore proves who signed, libwatch proves what was built.
+- **[SLSA](https://slsa.dev)** — Supply chain security framework. libwatch can help projects achieve SLSA levels by providing verifiable build provenance.
 
 ## Why Not Just Reproducible Builds?
 
-Reproducible builds verify **source → binary**. hashattest verifies **dependency downloads are untampered**. They're complementary.
+Reproducible builds verify **source → binary**. libwatch verifies **dependency downloads are untampered**. They're complementary.
 
-If a builder's DNS is hijacked and they download a poisoned `ring` or `libcrux`, their build is still "reproducible" — same poisoned input, same poisoned output, every time. Reproducible builds only catch this if multiple builders in different regions compare results. That's what hashattest does, but at the dependency level — catching the problem *before* it enters the build. Cheaper, easier, and doesn't require the entire ecosystem to achieve build determinism (which <10% of F-Droid apps have managed).
+If a builder's DNS is hijacked and they download a poisoned `ring` or `libcrux`, their build is still "reproducible" — same poisoned input, same poisoned output, every time. Reproducible builds only catch this if multiple builders in different regions compare results. That's what libwatch does, but at the dependency level — catching the problem *before* it enters the build. Cheaper, easier, and doesn't require the entire ecosystem to achieve build determinism (which <10% of F-Droid apps have managed).
 
 ## Geographic Diversity
 
@@ -138,7 +138,7 @@ Each additional region the attacker must compromise is a massive escalation in c
 
 Anyone can publish attestation events. That's the point — but it also means malicious actors can publish false ones.
 
-The defense is **web-of-trust filtering**. When you run `hashattest check`, you don't see all attestations — only attestations from builders in your web-of-trust (people you follow, and people they follow). A malicious attestor outside your trust graph is invisible. Same model nostr uses to filter spam.
+The defense is **web-of-trust filtering**. When you run `libwatch check`, you don't see all attestations — only attestations from builders in your web-of-trust (people you follow, and people they follow). A malicious attestor outside your trust graph is invisible. Same model nostr uses to filter spam.
 
 Builders build reputation over time. Accurate attestations earn trust. Inaccurate ones get you unfollowed.
 
