@@ -6,17 +6,14 @@ Nostr-based attestation tool for software dependency integrity. Guards against D
 
 A malicious actor can hijack DNS for a dependency's binary host domain. Developers compiling from that region silently receive a tampered library baked into their app. Even if the final app is hash-verified at distribution time, the compromised dependency is already inside.
 
-Today's defenses are fragmented:
-- Lockfile hash pinning (npm, Cargo, pub) only covers packages managed by that tool
-- Native dependencies fetched at build time (Gradle/Maven artifacts, pre-built `.so` files) bypass lockfile protections
-- Author-level signing is rare and opt-in
-- No system verifies dependencies across independent builders in different regions
+Existing tools help — lockfile hash pinning (npm, Cargo, pub), Sigstore provenance, SLSA frameworks — but they share two blind spots:
 
-**No one is doing hash attestation for software libraries.** Only for final app binaries.
+- **Native/binary dependencies fetched at build time bypass lockfile protections.** When `flutter build apk` triggers Gradle, it downloads native artifacts from Maven Central, Google's Maven repo, and other hosts. These fetches are not covered by `pubspec.lock` hashes. Same applies to pre-built `.so` files, NDK downloads, and binary host dependencies across ecosystems.
+- **No system cross-checks dependencies across independent builders in different geographic regions.** A state actor hijacking DNS in one region goes undetected if every builder is in that region.
 
 ## The Idea
 
-Use nostr to create a decentralized attestation layer for software dependencies:
+Use nostr to create a decentralized, cross-builder attestation layer for software dependencies — especially the native/binary fetches that existing tools miss:
 
 1. **Builders** independently download and hash dependencies, publishing signed attestation events to nostr relays
 2. **Developers** verify their dependencies against attestations from builders they trust (web-of-trust)
@@ -70,6 +67,8 @@ This fetches attestation events from relays, filtered by builders in your web-of
 - Which dependencies have conflicting hashes across builders (potential DNS attack)
 - Which dependencies have no attestations yet
 
+**The lockfile bootstrap problem:** If your lockfile was generated on a compromised network, the poisoned hash is already pinned — and builders will attest "match" against it. hashattest addresses this by cross-checking against a second trust anchor: prior attestations from trusted builders for the same package version. If your lockfile hash disagrees with what builders in clean regions previously attested, that's a flag. First-seen hashes with no prior attestations are marked as unverified.
+
 ## Nostr Events
 
 hashattest builds on the nostr event model defined in [NIP-82 (Software Applications)](https://github.com/nostr-protocol/nips/pull/1336):
@@ -101,6 +100,33 @@ Planned support:
 - **[WalletScrutiny](https://walletscrutiny.com)** — Reproducible build attestations for Bitcoin wallets using nostr events (kind 30301). hashattest builds on their [attestation format](https://gitlab.com/walletscrutiny/walletScrutinyCom/-/blob/master/docs/verifications.md).
 - **[Sigstore](https://sigstore.dev)** — Transparency logs for software signing. Complementary — sigstore proves who signed, hashattest proves what was built.
 - **[SLSA](https://slsa.dev)** — Supply chain security framework. hashattest can help projects achieve SLSA levels by providing verifiable build provenance.
+
+## Geographic Diversity
+
+Detection depends on having builders in different DNS regions. Each attestation event includes a geohash tag (`g`) per [NIP-52](https://github.com/nostr-protocol/nips/blob/master/52.md), so consumers can verify geographic diversity of their attestation sources.
+
+**How many regions matter?**
+
+A DNS attack is regional — a state actor controls DNS within their jurisdiction. Detection requires at least one builder inside the affected region and one outside it. The more regions you cover, the harder the attack becomes:
+
+| Regions hijacked | Builders in 3 regions | Builders in 5 regions | Builders in 7 regions |
+|-----------------|----------------------|----------------------|----------------------|
+| 1 (likely) | Detected | Detected | Detected |
+| 2 (coordinated) | Detected | Detected | Detected |
+| 3 (very unlikely) | Undetected | Detected | Detected |
+
+Each additional region the attacker must compromise is a massive escalation in cost and coordination. Hijacking 1 region (e.g., China's Great Firewall) is demonstrated capability. Hijacking 3+ independent regions simultaneously requires coordination between hostile state actors — a qualitatively different threat.
+
+**Recommendation: minimum 3 geo-diverse regions.** This catches any single-region attack and most coordinated attacks. 5+ regions is ideal.
+
+**Suggested builder regions:**
+1. North America
+2. Western Europe
+3. East Asia (outside China)
+4. Behind the Great Firewall (where attacks are most likely)
+5. South America
+6. Southeast Asia
+7. Africa / Middle East
 
 ## Trust
 
